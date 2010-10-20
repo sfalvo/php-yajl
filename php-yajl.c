@@ -10,6 +10,7 @@
  */
 static function_entry yajl_functions[] = {
     PHP_FE(hello_world, NULL)
+    PHP_FE(add_two_numbers, NULL)
     {NULL, NULL, NULL}
 };
 
@@ -43,5 +44,15 @@ ZEND_GET_MODULE(php_yajl)
 
 PHP_FUNCTION(hello_world) {
     RETURN_STRING("Hello world", 1);
+}
+
+PHP_FUNCTION(add_two_numbers) {
+    long a, b;
+
+    if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ll", &a, &b)) {
+        RETURN_NULL();
+    }
+
+    RETURN_LONG(a+b);
 }
 
