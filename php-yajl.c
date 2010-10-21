@@ -5,13 +5,18 @@
 #include <php.h>
 #include "php-yajl.h"
 
+#include <yajl/yajl_parse.h>
+
 /*
  * When PHP binds functions to C code, it uses this table to dispatch from.
  */
 static function_entry yajl_functions[] = {
+    PHP_FE(yajl_alloc, NULL)
+
     PHP_FE(hello_world, NULL)
     PHP_FE(add_two_numbers, NULL)
     PHP_FE(my_call_back, NULL)
+
     {NULL, NULL, NULL}
 };
 
@@ -39,9 +44,40 @@ zend_module_entry php_yajl_module_entry = {
 ZEND_GET_MODULE(php_yajl)
 #endif
 
-/*
- * These are the actual function entry points.
- */
+/* {{{ dummy callback for testing purposes. */
+static int yajl_callback_null(void *ctx)                                                            { return 1; }
+static int yajl_callback_boolean(void *ctx, int v)                                                  { return 1; }
+static int yajl_callback_integer(void *ctx, long v)                                                 { return 1; }
+static int yajl_callback_double(void *ctx, double v)                                                { return 1; }
+static int yajl_callback_string(void *ctx, const unsigned char *s, const unsigned int sLength)      { return 1; }
+static int yajl_callback_start_map(void *ctx)                                                       { return 1; }
+static int yajl_callback_map_key(void *ctx, const unsigned char *k, const unsigned int kLength)     { return 1; }
+static int yajl_callback_end_map(void *ctx)                                                         { return 1; }
+static int yajl_callback_start_array(void *ctx)                                                     { return 1; }
+static int yajl_callback_end_array(void *ctx)                                                       { return 1; }
+/* }}} */
+
+static yajl_callbacks callbacks = {
+    yajl_callback_null,
+    yajl_callback_boolean,
+    yajl_callback_integer,
+    yajl_callback_double,
+    NULL,
+    yajl_callback_string,
+    yajl_callback_start_map,
+    yajl_callback_map_key,
+    yajl_callback_end_map,
+    yajl_callback_start_array,
+    yajl_callback_end_array
+};
+
+PHP_FUNCTION(yajl_alloc) {
+    yajl_handle hYajl;
+    yajl_parser_config cfg = { 0, 0 };
+
+    hYajl = yajl_alloc(&callbacks, &cfg, NULL, NULL);
+    RETVAL_LONG((long)hYajl);
+}
 
 PHP_FUNCTION(hello_world) {
     RETURN_STRING("Hello world", 1);
