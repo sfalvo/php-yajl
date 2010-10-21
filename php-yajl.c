@@ -146,6 +146,7 @@ php_printf("AA\n");
     instance->php_ctx       = php_ctx;
     memcpy(&instance->fci, &fci, sizeof(fci));
     memcpy(&instance->fci_cache, &fcc, sizeof(fcc));
+    Z_ADDREF_P(instance->fci.function_name);
     if(php_ctx) Z_ADDREF_P(php_ctx);
 
 php_printf("AA\n");
