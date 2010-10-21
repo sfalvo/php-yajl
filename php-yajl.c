@@ -53,26 +53,29 @@ typedef struct php_yajl_record {
     zend_fcall_info_cache       fci_cache;
 } php_yajl_record;
 
-/* {{{ dummy callback for testing purposes. */
+/* {{{ callback for null keyword. */
 static int yajl_callback_null(void *yajl_ctx) {
     php_yajl_record *instance = (php_yajl_record *)yajl_ctx;
     zval *return_handle = NULL;
     HashTable *hash;
+    zval zType, zArg, *pzType=&zType, *pzArg=&zArg;
 
     /* Tell PHP where to put the return value */
-    php_printf("AAA\n");
     php_printf("%p\n", &instance->fci);
     instance->fci.retval_ptr_ptr = &return_handle;
 
     /* Bundle all the input parameters into an array. */
-    php_printf("BBB\n");
-    instance->fci.params = safe_emalloc(sizeof(zval *), 1, 0);
+    instance->fci.params = safe_emalloc(sizeof(zval *), 3, 0);
     instance->fci.param_count = 1;
     instance->fci.params[0] = &instance->php_ctx;
+    ZVAL_STRING(pzType, "null", 1);
+    instance->fci.params[1] = &pzType;
     php_printf("BBB\n");
+    ZVAL_NULL(pzArg);
+    php_printf("BBB\n");
+    instance->fci.params[2] = &pzArg;
 
     /* Call the supplied function. */
-    php_printf("CCC\n%p\n%p\n", instance, instance);
     zend_call_function(&instance->fci, &instance->fci_cache TSRMLS_CC);
 
     /* If the allocation succeeded, free the parameter array. */

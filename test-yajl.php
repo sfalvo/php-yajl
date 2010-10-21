@@ -1,10 +1,10 @@
 <?php
 
-function test_yajl_null($ctx) {
-    print "test_yajl_null called with context $ctx\n";
+function test_yajl_cb($ctx, $type, $arg) {
+    print "CTX: $ctx    TYPE: $type    ARG: $arg\n";
 }
 
-$hYajl = yajl_new(0, 0, "SMACKDOWN", test_yajl_null);
+$hYajl = yajl_new(0, 0, "SMACKDOWN", test_yajl_cb);
 print "hYajl = ".$hYajl."\n";
 
 $T = "{ \"foo\": null }";
