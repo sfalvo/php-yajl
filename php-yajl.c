@@ -184,14 +184,12 @@ static int yajl_callback_boolean(void *yajl_ctx, int v) { return _common_callbac
 static int yajl_callback_integer(void *yajl_ctx, long v) { return _common_callback_long_arg(yajl_ctx, "int", v); }
 static int yajl_callback_double(void *yajl_ctx, double v) { return _common_callback_double_arg(yajl_ctx, "double", v); }
 static int yajl_callback_string(void *yajl_ctx, const unsigned char *s, const unsigned int sLength) { return _common_callback_string_arg(yajl_ctx, "string", s, sLength); }
+static int yajl_callback_map_key(void *yajl_ctx, const unsigned char *s, const unsigned int sLength) { return _common_callback_string_arg(yajl_ctx, "key", s, sLength); }
 
-/* }}} */
-
-static int yajl_callback_start_map(void *ctx)                                                       { return 1; }
-static int yajl_callback_map_key(void *ctx, const unsigned char *k, const unsigned int kLength)     { return 1; }
-static int yajl_callback_end_map(void *ctx)                                                         { return 1; }
-static int yajl_callback_start_array(void *ctx)                                                     { return 1; }
-static int yajl_callback_end_array(void *ctx)                                                       { return 1; }
+static int yajl_callback_start_map(void *yajl_ctx)   { return _common_callback_no_arg(yajl_ctx, "map-start"); }
+static int yajl_callback_end_map(void *yajl_ctx)     { return _common_callback_no_arg(yajl_ctx, "map-end"); }
+static int yajl_callback_start_array(void *yajl_ctx) { return _common_callback_no_arg(yajl_ctx, "array-start"); }
+static int yajl_callback_end_array(void *yajl_ctx)   { return _common_callback_no_arg(yajl_ctx, "array-end"); }
 /* }}} */
 
 static yajl_callbacks callbacks = {
