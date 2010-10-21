@@ -71,21 +71,30 @@ static yajl_callbacks callbacks = {
     yajl_callback_end_array
 };
 
+typedef struct php_yajl_record {
+    yajl_handle         yajl;
+    zval *              php_callbacks;
+} php_yajl_record;
+
 PHP_FUNCTION(yajl_alloc) {
-    yajl_handle hYajl;
-    yajl_parser_config cfg = { 0, 0 };
-    zval *php_callbacks_array = NULL;
-    zval *php_config_array = NULL;
-    zval *php_config_allowComments = NULL;
-    zval *php_config_checkUTF8 = NULL;
-    HashTable *hash;
+    yajl_handle hYajl;                          /* YAJL's handle to its parser state */
+    yajl_parser_config cfg = { 0, 0 };          /* Configuration options affecting exactly how it parses. */
+    zval *php_callbacks_array = NULL;           /* Will refer to the user's PHP array of callback procedures */
+    zval *php_config_array = NULL;              /* Will refer to the user's PHP array of YAJL configuration settings */
+    zval *php_config_allowComments = NULL;      /* YAJL configuration fields broken out for easier code maintenance */
+    zval *php_config_checkUTF8 = NULL;          /* YAJL configuration fields broken out for easier code maintenance */
+    HashTable *hash;                            /* Temporary used for parsing PHP arrays */
+    zval *unused1, *unused2;                    /* Place holders for supporting the full capabilities of yajl.  For now, unused. */
+    php_yajl_record *instance;                  /* Stores a YAJL Parser/PHP callbacks mapping */
 
-    zval *unused1, *unused2;  /* Place holders for supporting the full capabilities of yajl.  For now, unused. */
-
+    /* Parse supplied parameters */
     if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "aa|zz", &php_callbacks_array, &php_config_array, &unused1, &unused2)) {
         RETURN_NULL();
     }
 
+    /* Deconstruct the provided PHP-representation of the yajl_parser_config
+     * structure, and re-marshal the data into a real yajl_parser_config.
+     */
     hash = Z_ARRVAL_P(php_config_array);
     if(zend_hash_index_find(hash, 0, &php_config_allowComments)) {
         RETURN_NULL();
@@ -95,11 +104,28 @@ PHP_FUNCTION(yajl_alloc) {
         RETURN_NULL();
     }
 
-    cfg.allowComments = Z_LVAL_P(php_config_allowComments);
-    cfg.checkUTF8 = Z_LVAL_P(php_config_checkUTF8);
+    cfg.allowComments   = Z_LVAL_P(php_config_allowComments);
+    cfg.checkUTF8       = Z_LVAL_P(php_config_checkUTF8);
 
+    /* Attempt to instantiate a PHP/YAJL association */
+    instance = (php_yajl_record *)(emalloc(sizeof(php_yajl_record)));
+    if(!instance) goto no_instance;
+
+    /* Open the YAJL instance. */
     hYajl = yajl_alloc(&callbacks, &cfg, NULL, NULL);
-    RETVAL_LONG((long)hYajl);
+    if(!hYajl) goto no_yajl;
+
+    /* Create and return an association between the YAJL instance and the supplied callbacks. */
+    instance->yajl = hYajl;
+    instance->php_callbacks = php_callbacks_array;
+    Z_ADDREF(php_callbacks_array);
+    RETURN_LONG((long)instance);
+
+    /* Error handling */
+no_yajl:
+    if(instance) efree(instance);
+no_instance:
+    RETURN_LONG(0);
 }
 
 PHP_FUNCTION(hello_world) {
