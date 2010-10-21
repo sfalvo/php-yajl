@@ -66,7 +66,7 @@ static int yajl_callback_null(void *yajl_ctx) {
 
     /* Bundle all the input parameters into an array. */
     instance->fci.params = safe_emalloc(sizeof(zval *), 3, 0);
-    instance->fci.param_count = 1;
+    instance->fci.param_count = 3;
     instance->fci.params[0] = &instance->php_ctx;
     ZVAL_STRING(pzType, "null", 1);
     instance->fci.params[1] = &pzType;
