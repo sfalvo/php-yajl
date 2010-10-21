@@ -2,15 +2,15 @@ dnl $Id$
 dnl config.m4 for extension boxwood
 
 PHP_ARG_ENABLE(yajl, enables YAJL bindings,
-               [  --enable-yajl,           Enable YAJL bindings])
+               [  --with-yajl[=DIR]     Include YAJL bindings])
 
 if test "$PHP_YAJL" != "no"; then
-  if test -r $PHP_YAJL/lib/libyajl.a; then
+  if test -r $PHP_YAJL/lib/libyajl_s.a; then
     YAJL_DIR=$PHP_YAJL
   else
       AC_MSG_CHECKING(for yajl in default path)
       for i in /usr/local /usr; do
-        if test -r $i/lib/libyajl.a; then
+        if test -r $i/lib/libyajl_s.a; then
           YAJL_DIR=$i
           AC_MSG_RESULT(found in $i)
         fi

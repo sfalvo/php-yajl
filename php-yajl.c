@@ -74,6 +74,29 @@ static yajl_callbacks callbacks = {
 PHP_FUNCTION(yajl_alloc) {
     yajl_handle hYajl;
     yajl_parser_config cfg = { 0, 0 };
+    zval *php_callbacks_array = NULL;
+    zval *php_config_array = NULL;
+    zval *php_config_allowComments = NULL;
+    zval *php_config_checkUTF8 = NULL;
+    HashTable *hash;
+
+    zval *unused1, *unused2;  /* Place holders for supporting the full capabilities of yajl.  For now, unused. */
+
+    if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "aa|zz", &php_callbacks_array, &php_config_array, &unused1, &unused2)) {
+        RETURN_NULL();
+    }
+
+    hash = Z_ARRVAL_P(php_config_array);
+    if(zend_hash_index_find(hash, 0, &php_config_allowComments)) {
+        RETURN_NULL();
+    }
+
+    if(zend_hash_index_find(hash, 1, &php_config_checkUTF8)) {
+        RETURN_NULL();
+    }
+
+    cfg.allowComments = Z_LVAL_P(php_config_allowComments);
+    cfg.checkUTF8 = Z_LVAL_P(php_config_checkUTF8);
 
     hYajl = yajl_alloc(&callbacks, &cfg, NULL, NULL);
     RETVAL_LONG((long)hYajl);
