@@ -5,6 +5,7 @@
 #define PHP_YAJL_EXTNAME "php-yajl"
 
 PHP_FUNCTION(yajl_alloc);
+PHP_FUNCTION(yajl_free);
 
 PHP_FUNCTION(hello_world);
 PHP_FUNCTION(add_two_numbers);

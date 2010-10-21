@@ -12,6 +12,7 @@
  */
 static function_entry yajl_functions[] = {
     PHP_FE(yajl_alloc, NULL)
+    PHP_FE(yajl_free, NULL)
 
     PHP_FE(hello_world, NULL)
     PHP_FE(add_two_numbers, NULL)
@@ -96,11 +97,11 @@ PHP_FUNCTION(yajl_alloc) {
      * structure, and re-marshal the data into a real yajl_parser_config.
      */
     hash = Z_ARRVAL_P(php_config_array);
-    if(zend_hash_index_find(hash, 0, &php_config_allowComments)) {
+    if(zend_hash_index_find(hash, 0, (void **)&php_config_allowComments)) {
         RETURN_NULL();
     }
 
-    if(zend_hash_index_find(hash, 1, &php_config_checkUTF8)) {
+    if(zend_hash_index_find(hash, 1, (void **)&php_config_checkUTF8)) {
         RETURN_NULL();
     }
 
@@ -118,7 +119,7 @@ PHP_FUNCTION(yajl_alloc) {
     /* Create and return an association between the YAJL instance and the supplied callbacks. */
     instance->yajl = hYajl;
     instance->php_callbacks = php_callbacks_array;
-    Z_ADDREF(php_callbacks_array);
+    Z_ADDREF_P(php_callbacks_array);
     RETURN_LONG((long)instance);
 
     /* Error handling */
@@ -126,6 +127,21 @@ no_yajl:
     if(instance) efree(instance);
 no_instance:
     RETURN_LONG(0);
+}
+
+PHP_FUNCTION(yajl_free) {
+    php_yajl_record *instance;
+
+    if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", (long *)&instance)) {
+        RETURN_NULL();
+    }
+
+    if(instance) {
+        if(instance->php_callbacks) Z_DELREF_P(instance->php_callbacks);
+        if(instance->yajl)          yajl_free(instance->yajl);
+        efree(instance);
+    }
+    RETURN_NULL();
 }
 
 PHP_FUNCTION(hello_world) {
