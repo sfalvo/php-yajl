@@ -11,8 +11,9 @@
  * When PHP binds functions to C code, it uses this table to dispatch from.
  */
 static function_entry yajl_functions[] = {
-    PHP_FE(yajl_alloc, NULL)
-    PHP_FE(yajl_free, NULL)
+    PHP_FE(yajl_new, NULL)
+    PHP_FE(yajl_dispose, NULL)
+    PHP_FE(yajl_parse, NULL)
 
     PHP_FE(hello_world, NULL)
     PHP_FE(add_two_numbers, NULL)
@@ -45,8 +46,44 @@ zend_module_entry php_yajl_module_entry = {
 ZEND_GET_MODULE(php_yajl)
 #endif
 
+typedef struct php_yajl_record {
+    yajl_handle                 yajl;
+    zval *                      php_ctx;
+    zend_fcall_info             fci;
+    zend_fcall_info_cache       fci_cache;
+} php_yajl_record;
+
 /* {{{ dummy callback for testing purposes. */
-static int yajl_callback_null(void *ctx)                                                            { return 1; }
+static int yajl_callback_null(void *yajl_ctx) {
+    php_yajl_record *instance = (php_yajl_record *)yajl_ctx;
+    zval *return_handle = NULL;
+    HashTable *hash;
+
+    /* Tell PHP where to put the return value */
+    php_printf("AAA\n");
+    php_printf("%p\n", &instance->fci);
+    instance->fci.retval_ptr_ptr = &return_handle;
+
+    /* Bundle all the input parameters into an array. */
+    php_printf("BBB\n");
+    instance->fci.params = safe_emalloc(sizeof(zval *), 1, 0);
+    instance->fci.param_count = 1;
+    instance->fci.params[0] = &instance->php_ctx;
+    php_printf("BBB\n");
+
+    /* Call the supplied function. */
+    php_printf("CCC\n%p\n%p\n", instance, instance);
+    zend_call_function(&instance->fci, &instance->fci_cache TSRMLS_CC);
+
+    /* If the allocation succeeded, free the parameter array. */
+    if(instance->fci.params) {
+        efree(instance->fci.params);
+    }
+
+    /* Without this, PHP seems to want to abort trap on me. */
+    return 1;
+}
+
 static int yajl_callback_boolean(void *ctx, int v)                                                  { return 1; }
 static int yajl_callback_integer(void *ctx, long v)                                                 { return 1; }
 static int yajl_callback_double(void *ctx, double v)                                                { return 1; }
@@ -72,54 +109,46 @@ static yajl_callbacks callbacks = {
     yajl_callback_end_array
 };
 
-typedef struct php_yajl_record {
-    yajl_handle         yajl;
-    zval *              php_callbacks;
-} php_yajl_record;
-
-PHP_FUNCTION(yajl_alloc) {
+PHP_FUNCTION(yajl_new) {
     yajl_handle hYajl;                          /* YAJL's handle to its parser state */
     yajl_parser_config cfg = { 0, 0 };          /* Configuration options affecting exactly how it parses. */
-    zval *php_callbacks_array = NULL;           /* Will refer to the user's PHP array of callback procedures */
-    zval *php_config_array = NULL;              /* Will refer to the user's PHP array of YAJL configuration settings */
-    zval *php_config_allowComments = NULL;      /* YAJL configuration fields broken out for easier code maintenance */
-    zval *php_config_checkUTF8 = NULL;          /* YAJL configuration fields broken out for easier code maintenance */
+    long php_config_allowComments;              /* YAJL configuration fields broken out for easier code maintenance */
+    long php_config_checkUTF8;                  /* YAJL configuration fields broken out for easier code maintenance */
     HashTable *hash;                            /* Temporary used for parsing PHP arrays */
-    zval *unused1, *unused2;                    /* Place holders for supporting the full capabilities of yajl.  For now, unused. */
+    zval *php_ctx;                              /* App-specific context zval; not interpreted by us or by YAJL. */
     php_yajl_record *instance;                  /* Stores a YAJL Parser/PHP callbacks mapping */
+    zend_fcall_info fci;                        /* Callback function info block -- black magic. */
+    zend_fcall_info_cache fcc;                  /* Callback function cache -- black magic. */
 
     /* Parse supplied parameters */
-    if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "aa|zz", &php_callbacks_array, &php_config_array, &unused1, &unused2)) {
+php_printf("AA\n");
+    if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "llzf", &php_config_allowComments, &php_config_checkUTF8, &php_ctx, &fci, &fcc)) {
         RETURN_NULL();
     }
 
-    /* Deconstruct the provided PHP-representation of the yajl_parser_config
-     * structure, and re-marshal the data into a real yajl_parser_config.
-     */
-    hash = Z_ARRVAL_P(php_config_array);
-    if(zend_hash_index_find(hash, 0, (void **)&php_config_allowComments)) {
-        RETURN_NULL();
-    }
-
-    if(zend_hash_index_find(hash, 1, (void **)&php_config_checkUTF8)) {
-        RETURN_NULL();
-    }
-
-    cfg.allowComments   = Z_LVAL_P(php_config_allowComments);
-    cfg.checkUTF8       = Z_LVAL_P(php_config_checkUTF8);
+php_printf("AA\n");
+    cfg.allowComments   = php_config_allowComments;
+    cfg.checkUTF8       = php_config_checkUTF8;
 
     /* Attempt to instantiate a PHP/YAJL association */
+php_printf("AA\n");
     instance = (php_yajl_record *)(emalloc(sizeof(php_yajl_record)));
     if(!instance) goto no_instance;
 
     /* Open the YAJL instance. */
-    hYajl = yajl_alloc(&callbacks, &cfg, NULL, NULL);
+php_printf("AA\n");
+    hYajl = yajl_alloc(&callbacks, &cfg, NULL, instance);
     if(!hYajl) goto no_yajl;
 
     /* Create and return an association between the YAJL instance and the supplied callbacks. */
-    instance->yajl = hYajl;
-    instance->php_callbacks = php_callbacks_array;
-    Z_ADDREF_P(php_callbacks_array);
+php_printf("AA\n");
+    instance->yajl          = hYajl;
+    instance->php_ctx       = php_ctx;
+    memcpy(&instance->fci, &fci, sizeof(fci));
+    memcpy(&instance->fci_cache, &fcc, sizeof(fcc));
+    if(php_ctx) Z_ADDREF_P(php_ctx);
+
+php_printf("AA\n");
     RETURN_LONG((long)instance);
 
     /* Error handling */
@@ -129,7 +158,22 @@ no_instance:
     RETURN_LONG(0);
 }
 
-PHP_FUNCTION(yajl_free) {
+PHP_FUNCTION(yajl_parse) {
+    php_yajl_record *instance;
+    char *input_string;
+    int input_length;
+    int r;
+
+    if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ls", (long *)&instance, &input_string, &input_length)) {
+        RETURN_NULL();
+    }
+
+    r = yajl_parse(instance->yajl, input_string, input_length);
+
+    RETURN_LONG(r);
+}
+
+PHP_FUNCTION(yajl_dispose) {
     php_yajl_record *instance;
 
     if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", (long *)&instance)) {
@@ -137,7 +181,7 @@ PHP_FUNCTION(yajl_free) {
     }
 
     if(instance) {
-        if(instance->php_callbacks) Z_DELREF_P(instance->php_callbacks);
+        if(instance->php_ctx)       Z_DELREF_P(instance->php_ctx);
         if(instance->yajl)          yajl_free(instance->yajl);
         efree(instance);
     }

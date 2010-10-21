@@ -4,8 +4,9 @@
 #define PHP_YAJL_VERSION "1.0"
 #define PHP_YAJL_EXTNAME "php-yajl"
 
-PHP_FUNCTION(yajl_alloc);
-PHP_FUNCTION(yajl_free);
+PHP_FUNCTION(yajl_new);
+PHP_FUNCTION(yajl_dispose);
+PHP_FUNCTION(yajl_parse);
 
 PHP_FUNCTION(hello_world);
 PHP_FUNCTION(add_two_numbers);
