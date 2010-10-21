@@ -7,7 +7,7 @@ function test_yajl_cb($ctx, $type, $arg) {
 $hYajl = yajl_new(0, 0, "SMACKDOWN", test_yajl_cb);
 print "hYajl = ".$hYajl."\n";
 
-$T = "{ \"nl\": null, \"bl\": false, \"in\": 12345, \"db\": 123.45, \"str\": \"DEADBEEF\" }";
+$T = "{ \"nl\": null, \"bl\": false,                \"db\": 123.45, \"str\": \"DEADBEEF\" }";
 $r = 0;
 $r = yajl_parse($hYajl, $T);
 print "r = ".$r."\n";
