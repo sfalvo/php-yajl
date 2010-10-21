@@ -54,7 +54,8 @@ typedef struct php_yajl_record {
 } php_yajl_record;
 
 /* {{{ callback for null keyword. */
-static int yajl_callback_null(void *yajl_ctx) {
+
+static int _common_callback_no_arg(void *yajl_ctx, char *type) {
     php_yajl_record *instance = (php_yajl_record *)yajl_ctx;
     zval *return_handle = NULL;
     HashTable *hash;
@@ -68,11 +69,9 @@ static int yajl_callback_null(void *yajl_ctx) {
     instance->fci.params = safe_emalloc(sizeof(zval *), 3, 0);
     instance->fci.param_count = 3;
     instance->fci.params[0] = &instance->php_ctx;
-    ZVAL_STRING(pzType, "null", 1);
+    ZVAL_STRING(pzType, type, 1);
     instance->fci.params[1] = &pzType;
-    php_printf("BBB\n");
     ZVAL_NULL(pzArg);
-    php_printf("BBB\n");
     instance->fci.params[2] = &pzArg;
 
     /* Call the supplied function. */
@@ -87,10 +86,107 @@ static int yajl_callback_null(void *yajl_ctx) {
     return 1;
 }
 
-static int yajl_callback_boolean(void *ctx, int v)                                                  { return 1; }
-static int yajl_callback_integer(void *ctx, long v)                                                 { return 1; }
-static int yajl_callback_double(void *ctx, double v)                                                { return 1; }
-static int yajl_callback_string(void *ctx, const unsigned char *s, const unsigned int sLength)      { return 1; }
+static int _common_callback_double_arg(void *yajl_ctx, char *type, double v) {
+    php_yajl_record *instance = (php_yajl_record *)yajl_ctx;
+    zval *return_handle = NULL;
+    HashTable *hash;
+    zval zType, zArg, *pzType=&zType, *pzArg=&zArg;
+
+    /* Tell PHP where to put the return value */
+    php_printf("%p\n", &instance->fci);
+    instance->fci.retval_ptr_ptr = &return_handle;
+
+    /* Bundle all the input parameters into an array. */
+    instance->fci.params = safe_emalloc(sizeof(zval *), 3, 0);
+    instance->fci.param_count = 3;
+    instance->fci.params[0] = &instance->php_ctx;
+    ZVAL_STRING(pzType, type, 1);
+    instance->fci.params[1] = &pzType;
+    ZVAL_DOUBLE(pzArg, v);
+    instance->fci.params[2] = &pzArg;
+
+    /* Call the supplied function. */
+    zend_call_function(&instance->fci, &instance->fci_cache TSRMLS_CC);
+
+    /* If the allocation succeeded, free the parameter array. */
+    if(instance->fci.params) {
+        efree(instance->fci.params);
+    }
+
+    /* Without this, PHP seems to want to abort trap on me. */
+    return 1;
+}
+
+static int _common_callback_long_arg(void *yajl_ctx, char *type, long v) {
+    php_yajl_record *instance = (php_yajl_record *)yajl_ctx;
+    zval *return_handle = NULL;
+    HashTable *hash;
+    zval zType, zArg, *pzType=&zType, *pzArg=&zArg;
+
+    /* Tell PHP where to put the return value */
+    php_printf("%p\n", &instance->fci);
+    instance->fci.retval_ptr_ptr = &return_handle;
+
+    /* Bundle all the input parameters into an array. */
+    instance->fci.params = safe_emalloc(sizeof(zval *), 3, 0);
+    instance->fci.param_count = 3;
+    instance->fci.params[0] = &instance->php_ctx;
+    ZVAL_STRING(pzType, type, 1);
+    instance->fci.params[1] = &pzType;
+    ZVAL_LONG(pzArg, v);
+    instance->fci.params[2] = &pzArg;
+
+    /* Call the supplied function. */
+    zend_call_function(&instance->fci, &instance->fci_cache TSRMLS_CC);
+
+    /* If the allocation succeeded, free the parameter array. */
+    if(instance->fci.params) {
+        efree(instance->fci.params);
+    }
+
+    /* Without this, PHP seems to want to abort trap on me. */
+    return 1;
+}
+
+static int _common_callback_string_arg(void *yajl_ctx, char *type, char *s, int sLength) {
+    php_yajl_record *instance = (php_yajl_record *)yajl_ctx;
+    zval *return_handle = NULL;
+    HashTable *hash;
+    zval zType, zArg, *pzType=&zType, *pzArg=&zArg;
+
+    /* Tell PHP where to put the return value */
+    php_printf("%p\n", &instance->fci);
+    instance->fci.retval_ptr_ptr = &return_handle;
+
+    /* Bundle all the input parameters into an array. */
+    instance->fci.params = safe_emalloc(sizeof(zval *), 3, 0);
+    instance->fci.param_count = 3;
+    instance->fci.params[0] = &instance->php_ctx;
+    ZVAL_STRING(pzType, type, 1);
+    instance->fci.params[1] = &pzType;
+    ZVAL_STRINGL(pzArg, s, sLength, 1);
+    instance->fci.params[2] = &pzArg;
+
+    /* Call the supplied function. */
+    zend_call_function(&instance->fci, &instance->fci_cache TSRMLS_CC);
+
+    /* If the allocation succeeded, free the parameter array. */
+    if(instance->fci.params) {
+        efree(instance->fci.params);
+    }
+
+    /* Without this, PHP seems to want to abort trap on me. */
+    return 1;
+}
+
+static int yajl_callback_null(void *yajl_ctx) { return _common_callback_no_arg(yajl_ctx, "null"); }
+static int yajl_callback_boolean(void *yajl_ctx, int v) { return _common_callback_long_arg(yajl_ctx, "bool", (long)v); }
+static int yajl_callback_integer(void *yajl_ctx, long v) { return _common_callback_long_arg(yajl_ctx, "int", v); }
+static int yajl_callback_double(void *yajl_ctx, double v) { return _common_callback_double_arg(yajl_ctx, "double", v); }
+static int yajl_callback_string(void *yajl_ctx, const unsigned char *s, const unsigned int sLength) { return _common_callback_string_arg(yajl_ctx, "string", s, sLength); }
+
+/* }}} */
+
 static int yajl_callback_start_map(void *ctx)                                                       { return 1; }
 static int yajl_callback_map_key(void *ctx, const unsigned char *k, const unsigned int kLength)     { return 1; }
 static int yajl_callback_end_map(void *ctx)                                                         { return 1; }
