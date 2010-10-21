@@ -11,6 +11,7 @@
 static function_entry yajl_functions[] = {
     PHP_FE(hello_world, NULL)
     PHP_FE(add_two_numbers, NULL)
+    PHP_FE(my_call_back, NULL)
     {NULL, NULL, NULL}
 };
 
@@ -54,5 +55,43 @@ PHP_FUNCTION(add_two_numbers) {
     }
 
     RETURN_LONG(a+b);
+}
+
+PHP_FUNCTION(my_call_back) {
+    zval *return_handle = NULL;
+    zend_fcall_info fci;
+    zend_fcall_info_cache fci_cache;
+    zval *the_parameter;
+    char tmp[30];
+
+    if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "f", &fci, &fci_cache)) {
+        RETURN_NULL();
+    }
+
+    /* Tell our function call execution context where to put its return results. */
+    fci.retval_ptr_ptr = &return_handle;
+
+    /* Synthesize its input parameters. */
+    memset(tmp, 0, 30);
+    tmp[0] = '0';
+    tmp[1] = 'x';
+    sprintf(&tmp[2], "%016lX", (unsigned long)tmp);
+    ZVAL_STRING(the_parameter, tmp, 0);
+
+    /* Bundle all the input parameters into an array. */
+    fci.params = safe_emalloc(sizeof(zval *), 1, 0);
+    fci.param_count = 1;
+    fci.params[0] = &the_parameter;
+
+    /* Call the supplied function. */
+    zend_call_function(&fci, &fci_cache TSRMLS_CC);
+
+    /* If the allocation succeeded, free the parameter array. */
+    if(fci.params) {
+        efree(fci.params);
+    }
+
+    /* Without this, PHP seems to want to abort trap on me. */
+    RETURN_NULL();
 }
 

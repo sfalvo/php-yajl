@@ -6,6 +6,7 @@
 
 PHP_FUNCTION(hello_world);
 PHP_FUNCTION(add_two_numbers);
+PHP_FUNCTION(my_call_back);
 
 extern zend_module_entry php_yajl_module_entry;
 #define phpext_yajl_ptr &hello_module_entry
