@@ -46,6 +46,21 @@ zend_module_entry php_yajl_module_entry = {
 ZEND_GET_MODULE(php_yajl)
 #endif
 
+/*
+ * PHP requires certain amounts of book-keeping.  YAJL requires a certain
+ * amount of book-keeping.  I use the php_yajl_record structure to keep
+ * these various opaque attributes associated with each other.
+ *
+ * The integer you receive when you invoke yajl_new() in PHP will be the
+ * byte pointer address of one of these structures.  This is a rotten way
+ * to communicate such matters back to PHP, but it proves effective as long
+ * as you treat these numbers as opaque entities.  I invite someone with
+ * more PHP/C integration experience than I to feel free to fix this how-
+ * ever they wish.  PHP clients not dependent on the return type or mean-
+ * ing of the return value of yajl_new() should not be affected.  PHP
+ * clients which do depend on the implementation-specific details are ex-
+ * pressly incompatible with php-yajl.
+ */
 typedef struct php_yajl_record {
     yajl_handle                 yajl;
     zval *                      php_ctx;
@@ -53,7 +68,11 @@ typedef struct php_yajl_record {
     zend_fcall_info_cache       fci_cache;
 } php_yajl_record;
 
-/* {{{ callback for null keyword. */
+/*
+ * A number of YAJL callbacks share a common signature.  This procedure
+ * implements the common semantics needed to bind the C callback to its
+ * corresponding PHP callback.
+ */
 
 static int _common_callback_no_arg(void *yajl_ctx, char *type) {
     php_yajl_record *instance = (php_yajl_record *)yajl_ctx;
@@ -85,6 +104,10 @@ static int _common_callback_no_arg(void *yajl_ctx, char *type) {
     /* Without this, PHP seems to want to abort trap on me. */
     return 1;
 }
+
+/*
+ * These refactorings of the above procedure handle specific argument types.
+ */
 
 static int _common_callback_double_arg(void *yajl_ctx, char *type, double v) {
     php_yajl_record *instance = (php_yajl_record *)yajl_ctx;
@@ -179,6 +202,11 @@ static int _common_callback_string_arg(void *yajl_ctx, char *type, char *s, int 
     return 1;
 }
 
+/*
+ * The following procedures bind YAJL back to PHP via the aforelisted pro-
+ * cedures, passing relevant switches to affect final behavior.
+ */
+
 static int yajl_callback_null(void *yajl_ctx) { return _common_callback_no_arg(yajl_ctx, "null"); }
 static int yajl_callback_boolean(void *yajl_ctx, int v) { return _common_callback_long_arg(yajl_ctx, "bool", (long)v); }
 static int yajl_callback_integer(void *yajl_ctx, long v) { return _common_callback_long_arg(yajl_ctx, "int", v); }
@@ -218,27 +246,22 @@ PHP_FUNCTION(yajl_new) {
     zend_fcall_info_cache fcc;                  /* Callback function cache -- black magic. */
 
     /* Parse supplied parameters */
-php_printf("AA\n");
     if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "llzf", &php_config_allowComments, &php_config_checkUTF8, &php_ctx, &fci, &fcc)) {
         RETURN_NULL();
     }
 
-php_printf("AA\n");
     cfg.allowComments   = php_config_allowComments;
     cfg.checkUTF8       = php_config_checkUTF8;
 
     /* Attempt to instantiate a PHP/YAJL association */
-php_printf("AA\n");
     instance = (php_yajl_record *)(emalloc(sizeof(php_yajl_record)));
     if(!instance) goto no_instance;
 
     /* Open the YAJL instance. */
-php_printf("AA\n");
     hYajl = yajl_alloc(&callbacks, &cfg, NULL, instance);
     if(!hYajl) goto no_yajl;
 
     /* Create and return an association between the YAJL instance and the supplied callbacks. */
-php_printf("AA\n");
     instance->yajl          = hYajl;
     instance->php_ctx       = php_ctx;
     memcpy(&instance->fci, &fci, sizeof(fci));
@@ -246,7 +269,6 @@ php_printf("AA\n");
     Z_ADDREF_P(instance->fci.function_name);
     if(php_ctx) Z_ADDREF_P(php_ctx);
 
-php_printf("AA\n");
     RETURN_LONG((long)instance);
 
     /* Error handling */
